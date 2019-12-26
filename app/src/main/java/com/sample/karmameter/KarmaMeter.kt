@@ -17,11 +17,6 @@ class KarmaMeter @JvmOverloads constructor(
 
 
     var paintInnerArc: Paint = Paint()
-    var paintOuterArc1: Paint = Paint()
-    var paintOuterArc2: Paint = Paint()
-    var paintOuterArc3: Paint = Paint()
-    var paintOuterArc4: Paint = Paint()
-    var paintOuterArc5: Paint = Paint()
     var needlePaint: Paint = Paint()
     var needleStrokePaint: Paint = Paint()
     var divisionPaint: Paint = Paint()
@@ -31,20 +26,19 @@ class KarmaMeter @JvmOverloads constructor(
     private val useCenter = false
     var needlePath = Path()
     var divisionPath = Path()
-    private val divisionPathForArc1 = Path()
-    private val divisionPathForArc2 = Path()
-    private val divisionPathForArc3 = Path()
-    private val divisionPathForArc4 = Path()
-    private val divisionPathForArc5 = Path()
+    private var divisionPathForArc = Path()
     private val textPath = Path()
 
     var divisionPointsStart: ArrayList<Point> = ArrayList()
     var divisionPointsEnd: ArrayList<Point> = ArrayList()
     var divisionPointsForArc: ArrayList<Point> = ArrayList()
-    var centerPointsForText: ArrayList<Point> = ArrayList()
+    var pathsForText: ArrayList<Path> = ArrayList()
+    var pathsForDivs: ArrayList<Path> = ArrayList()
+    var paintForDivs: ArrayList<Paint> = ArrayList()
     var divisionStrokeWidth = 5F
     var needleStrokeWidth = 10F
     val outerRingThicknessRatio = 0.1
+    val textouterRingThicknessRatio = 0.075
     val needleHeightRatio = 0.2
     val radiusOfTopArc = 5
     val radiusOfBottomArc = 2 * radiusOfTopArc
@@ -54,31 +48,29 @@ class KarmaMeter @JvmOverloads constructor(
     val divisionMarginRatioLower = 0.9
 
     var innerArcColor = R.color.white
-    var outerArcColor1 = R.color.red
-    var outerArcColor2 = R.color.orange
-    var outerArcColor3 = R.color.yellow
-    var outerArcColor4 = R.color.light_green
-    var outerArcColor5 = R.color.dark_green
     var textColor = R.color.grey
     var selectedTextColor = R.color.white
     var needleColor = R.color.grey
     var needleStrokeColor = R.color.white
     var divisionColor = R.color.transparent
     var levelType = LEVEL_TYPE.NUMBERED
-    val numberString = "1 2 3 4 5"
+    var numberString = "1 "
+    val colors = arrayOf(R.color.red,R.color.orange, R.color.yellow, R.color.light_green,R.color.dark_green, R.color.red, R.color.yellow  )
     init {
         context?.let {
+
+            for (j in 0 until noOfDivisions)
+            {
+                var paintOuterArc = Paint()
+                paintOuterArc.color = ContextCompat.getColor(context, colors[j])
+                paintOuterArc.style = Paint.Style.FILL
+                paintForDivs.add(paintOuterArc)
+                if (j > 0)
+                {
+                    numberString += (j+1).toString() +" "
+                }
+            }
             paintInnerArc.color = ContextCompat.getColor(context, innerArcColor)
-            paintOuterArc1.color = ContextCompat.getColor(context, outerArcColor1)
-            paintOuterArc1.style = Paint.Style.FILL
-            paintOuterArc2.color = ContextCompat.getColor(context, outerArcColor2)
-            paintOuterArc2.style = Paint.Style.FILL
-            paintOuterArc3.color = ContextCompat.getColor(context, outerArcColor3)
-            paintOuterArc3.style = Paint.Style.FILL
-            paintOuterArc4.color = ContextCompat.getColor(context, outerArcColor4)
-            paintOuterArc4.style = Paint.Style.FILL
-            paintOuterArc5.color = ContextCompat.getColor(context, outerArcColor5)
-            paintOuterArc5.style = Paint.Style.FILL
             divisionPaint.strokeWidth = divisionStrokeWidth
             needlePaint.color = ContextCompat.getColor(context, needleColor)
             needlePaint.style = Paint.Style.FILL
@@ -90,12 +82,9 @@ class KarmaMeter @JvmOverloads constructor(
             divisionPaint.color = ContextCompat.getColor(context, divisionColor)
             divisionPaint.style = Paint.Style.STROKE
             divisionPaint.strokeWidth = divisionStrokeWidth
-
             textPaint.color = textColor
             textPaint.textAlign = Paint.Align.CENTER
-            textPaint.style = Paint.Style.STROKE
             textPaint.textSize = 50F
-            textPaint.letterSpacing = 1.5F
         }
 
     }
@@ -103,19 +92,21 @@ class KarmaMeter @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         canvas?.let { canvas ->
-            canvas.drawPath(divisionPathForArc1, paintOuterArc1)
-            canvas.drawPath(divisionPathForArc2, paintOuterArc2)
-            canvas.drawPath(divisionPathForArc3, paintOuterArc3)
-            canvas.drawPath(divisionPathForArc4, paintOuterArc4)
-            canvas.drawPath(divisionPathForArc5, paintOuterArc5)
+
+            pathsForDivs.forEachIndexed { index, path ->
+                canvas.drawPath(path,paintForDivs[index])
+            }
+
             rectInner?.let { rectInner ->
                 canvas.drawArc(rectInner, 180F, 180F, useCenter, paintInnerArc)
             }
             canvas.drawPath(needlePath, needleStrokePaint)
             canvas.drawPath(needlePath, needlePaint)
             canvas.drawPath(divisionPath, divisionPaint)
-//            canvas.drawTextOnPath(numberString, textPath,0F,0F, textPaint )
-            canvas.drawPath(textPath, textPaint)
+
+            numberString.split(" ").forEachIndexed { index, letter ->
+                canvas.drawTextOnPath(letter, pathsForText[index], 0F, 0F, textPaint)
+            }
         }
     }
 
@@ -140,76 +131,70 @@ class KarmaMeter @JvmOverloads constructor(
             (height).toFloat(),
             (width).toFloat()
         )
-
-
-        //add the outer arc. This will move from base towards the top.
-        divisionPathForArc1.arcTo(rectOuter, 180F, angle.toFloat())
-        //add line towards the inner arc
-        divisionPathForArc1.lineTo(
-            divisionPointsForArc[1].x.toFloat(), divisionPointsForArc[1].y.toFloat()
+        val textRect = RectF(
+            (width * textouterRingThicknessRatio).toFloat(),
+            (height * textouterRingThicknessRatio).toFloat(),
+            (height * (1 - textouterRingThicknessRatio)).toFloat(),
+            (width * (1 - textouterRingThicknessRatio)).toFloat()
         )
-        //add line to inner circle's bottom
-        divisionPathForArc1.lineTo(width * outerRingThicknessRatio.toFloat(), (width / 2).toFloat())
-        //tell path to close
-        divisionPathForArc1.close()
+        var lowerPointArithmeticOffset = noOfDivisions / 2
 
+        pathsForDivs = ArrayList()
+        for (j in 1..noOfDivisions) {
+            divisionPathForArc = Path()
+            //add the outer arc. This will move from base towards the top.
+            divisionPathForArc.arcTo(rectOuter, 180F + (j - 1) * angle.toFloat(), angle.toFloat())
+            when (j) {
+                1 -> {
+                    //add line towards the inner arc
+                    divisionPathForArc.lineTo(
+                        divisionPointsForArc[j].x.toFloat(), divisionPointsForArc[j].y.toFloat()
+                    )
 
+                    //add line to inner circle's bottom
+                    divisionPathForArc.lineTo(
+                        width * outerRingThicknessRatio.toFloat(),
+                        (width / 2).toFloat()
+                    )
+                }
+                noOfDivisions -> {
+                    //add line towards the inner arc
+                    divisionPathForArc.lineTo(
+                        width * (1 - outerRingThicknessRatio.toFloat()),
+                        (width / 2).toFloat()
+                    )
+                    //add line to the top of arc on the inner circle along the inner circle
+                    divisionPathForArc.lineTo(
+                        divisionPointsForArc[j - lowerPointArithmeticOffset].x.toFloat(),
+                        divisionPointsForArc[j - lowerPointArithmeticOffset].y.toFloat()
+                    )
+                }
+                else -> {
+                    //this is for 2
+                    //add line towards the inner arc
+                    divisionPathForArc.lineTo(
+                        divisionPointsForArc[2 * j - 1].x.toFloat(),
+                        divisionPointsForArc[2 * j - 1].y.toFloat()
+                    )
+                    //add line to the base of arc on the inner circle along the inner circle
+                    divisionPathForArc.lineTo(
+                        divisionPointsForArc[j - lowerPointArithmeticOffset].x.toFloat(),
+                        divisionPointsForArc[j - lowerPointArithmeticOffset].y.toFloat()
+                    )
 
+                }
+            }
+            lowerPointArithmeticOffset -= 1
 
-        //add arc from lower point towards the top
-        divisionPathForArc2.arcTo(rectOuter, 180 + angle.toFloat(), angle.toFloat())
-        //add line towards the inner arc
-        divisionPathForArc2.lineTo(
-            divisionPointsForArc[3].x.toFloat(),
-            divisionPointsForArc[3].y.toFloat()
-        )
-        //add line to the base of arc on the inner circle along the inner circle
-        divisionPathForArc2.lineTo(
-            divisionPointsForArc[1].x.toFloat(),
-            divisionPointsForArc[1].y.toFloat()
-        )
+            //tell path to close
+            divisionPathForArc.close()
 
+            pathsForDivs.add(divisionPathForArc)
 
-        //add arc from lower point towards the top
-        divisionPathForArc3.arcTo(rectOuter, 180 + 2 * angle.toFloat(), angle.toFloat())
-        //add line towards the inner arc
-        divisionPathForArc3.lineTo(
-            divisionPointsForArc[5].x.toFloat(),
-            divisionPointsForArc[5].y.toFloat()
-        )
-        //add line to the base of arc on the inner circle along the inner circle
-        divisionPathForArc3.lineTo(
-            divisionPointsForArc[3].x.toFloat(),
-            divisionPointsForArc[3].y.toFloat()
-        )
-
-
-        //add arc from upper point towards the lower point
-        divisionPathForArc4.arcTo(rectOuter, 180 + 3 * angle.toFloat(), angle.toFloat())
-        //add line towards the inner arc
-        divisionPathForArc4.lineTo(
-            divisionPointsForArc[7].x.toFloat(),
-            divisionPointsForArc[7].y.toFloat()
-        )
-        //add line to the top of arc on the inner circle along the inner circle
-        divisionPathForArc4.lineTo(
-            divisionPointsForArc[5].x.toFloat(),
-            divisionPointsForArc[5].y.toFloat()
-        )
-
-
-        //add arc from upper point towards the lower point
-        divisionPathForArc5.arcTo(rectOuter, 180 + 4 * angle.toFloat(), angle.toFloat())
-        //add line towards the inner arc
-        divisionPathForArc5.lineTo(
-            width * (1 - outerRingThicknessRatio.toFloat()),
-            (width / 2).toFloat()
-        )
-        //add line to the top of arc on the inner circle along the inner circle
-        divisionPathForArc5.lineTo(
-            divisionPointsForArc[7].x.toFloat(),
-            divisionPointsForArc[7].y.toFloat()
-        )
+            val path = Path()
+            path.addArc(textRect, 180F + (j - 1) * angle.toFloat(), angle.toFloat())
+            pathsForText.add(path)
+        }
 
 
     }
@@ -377,9 +362,7 @@ class KarmaMeter @JvmOverloads constructor(
             (height * (1 - outerRingThicknessRatio)).toFloat(),
             (width * (1 - outerRingThicknessRatio)).toFloat()
         )
-        textPath.addArc(rectInner , 200F,160F)
-        val angle = 180 / noOfDivisions
-//        textPaint.letterSpacing = (width * sin( angle* Math.PI / 180)).toFloat()
+        textPath.addArc(rectInner, 198F, 144F)
     }
 
 }
